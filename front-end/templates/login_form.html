@@ -1,0 +1,63 @@
+<!-- _login_form.html -->
+<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4 ">
+  <form method="POST" class="bg-white p-6 rounded shadow-md w-full max-w-sm">
+    <h2 class="text-xl mb-4 text-center font-semibold text-gray-800">Login</h2>
+
+    <!-- Email Input -->
+    <input type="email" name="email"
+           class="w-full mb-2 border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+           placeholder="Email (must be Gmail)" required />
+
+    <!-- password Input -->
+    <input type="password" name="password"
+           class="w-full mb-2 border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+           placeholder="Password" required />
+
+    <!-- 🔴 Error Message (hidden by default) -->
+    <div id="error-box" class="hidden mb-3 text-center">
+      <p class="text-sm text-red-600 font-medium">Incorrect email or password.</p>
+    </div>
+
+    <!-- Forgot Password Link -->
+    <div class="text-center mb-3">
+      <a href="/forgot-password" 
+         class="text-sm text-blue-500 hover:underline hover:text-blue-600 transition">
+        Forgot password?
+      </a>
+    </div>
+<!-- Load Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<div id="g_id_onload"
+     data-client_id="{{google_client_id}}"
+     data-login_uri="http://localhost:8000/google-callback"
+     data-auto_prompt="false">
+</div>
+
+<div class="g_id_signin" id="googleSignInDiv"
+     data-type="standard"
+     data-shape="rectangular"
+     data-theme="outline"
+     data-text="signin_with"
+     data-size="large" 
+     data-logo_alignment="left"
+     data-locale="en">
+</div>
+
+    <!-- Login Button -->
+    <button type="button"
+            class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+      Login
+    </button>
+
+    <!-- Create Account Button -->
+    <button type="button"
+            onclick="window.location.href='/create-account';"
+            class="mt-3 text-sm bg-green-500 text-white py-1.5 px-4 rounded hover:bg-green-600 transition block mx-auto">
+      Create New Account
+    </button>
+  </form>
+</div>
+<script>
+  window.GOOGLE_CLIENT_ID = "{{ google_client_id }}";
+</script>

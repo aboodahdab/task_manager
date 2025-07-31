@@ -1,0 +1,69 @@
+<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+  <div class="w-full max-w-md space-y-6">
+
+    <!-- Error Message -->
+    <div id="error-box" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">
+      <strong class="font-semibold">Oops!</strong>
+      <span class="block" id="span">Something went wrong while creating your account.</span>
+    </div>
+
+    <!-- Signup Form -->
+    <form method="POST" class="bg-white p-8 rounded-2xl shadow-xl space-y-4">
+      <h2 class="text-2xl font-bold text-center text-gray-800">Create Your Account</h2>
+
+      <input type="text" name="username"
+             class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+             placeholder="Username" required />
+
+      <input type="email" name="email"
+             class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+             placeholder="Email (must be Gmail)" required />
+
+      <input type="password" name="password"
+             class="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+             placeholder="Password (min 8 characters)" required />
+
+      <button id="button" type="button"
+              class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition duration-200">
+        Sign Up
+      </button>
+
+      <!-- OR Divider -->
+      <div class="text-center text-gray-400 text-sm">OR</div>
+
+      <!-- Google Sign-In -->
+      <div class="flex justify-center">
+        <div id="g_id_onload"
+             data-client_id="{{ google_client_id }}"
+             data-login_uri="http://localhost:8000/google-callback"
+             data-auto_prompt="false">
+        </div>
+
+        <div class="g_id_signin" id="googleSignInDiv"
+             data-type="standard"
+             data-shape="rectangular"
+             data-theme="outline"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="left">
+        </div>
+      </div>
+
+      <!-- Already have an account? -->
+      <div class="mt-4 text-center">
+        <p class="text-sm text-gray-600 mb-2">Already have an account?</p>
+        <button type="button"
+                onclick="window.location.href='/login';"
+                class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">
+          Login
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  window.GOOGLE_CLIENT_ID = "{{ google_client_id }}";
+</script>

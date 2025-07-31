@@ -1,0 +1,7 @@
+pymongo
+python-dotenv
+authlib
+flask
+google-auth
+werkzeug
+requests
