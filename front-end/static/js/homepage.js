@@ -47,7 +47,7 @@ $add_new_task_btn.addEventListener("click", async () => {
   const due = $task_date_input.value.trim();
   let status = $task_status_option.value.trim();
 
-  if (!check(name, due, status)) {
+  if (check(name, due, status) == false) {
     console.log("welcome sti;");
     return showTaskError("Please fill in all fields.");
   }
@@ -217,7 +217,10 @@ function toggleAddTaskModal() {
 }
 
 function check(v1, v2, v3) {
-  return v1 !== "" && v2 !== "" && v3 !== "";
+  if (v1 !== "" && v2 !== "" && v3 !== "") {
+    return true;
+  }
+  return false;
 }
 
 function toggleDropdown(button) {
