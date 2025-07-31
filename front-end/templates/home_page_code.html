@@ -1,0 +1,120 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Tasks</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('-translate-x-full');
+    }
+
+    function toggleAddTaskModal() {
+      const modal = document.getElementById('add_task_div');
+      modal.classList.toggle('hidden');
+    }
+  </script>
+</head>
+
+<body class="min-h-screen flex flex-col md:flex-row bg-gray-100">
+
+  <!-- Sidebar -->
+  <aside id="sidebar"
+    class="fixed top-0 left-0 w-64 h-full bg-gray-800 text-white flex flex-col p-6 
+           transform transition-transform duration-300 ease-in-out 
+           -translate-x-full md:translate-x-0 z-50 sm:not-focus-within:hidden">
+    <div>
+      <h2 class="text-2xl font-bold mb-6">📋 Dashboard</h2>
+      <ul class="space-y-4">
+        <li class="hover:text-gray-300 cursor-pointer">Home</li>
+        <li class="hover:text-gray-300 cursor-pointer">Projects</li>
+        <li class="hover:text-gray-300 cursor-pointer">Calendar</li>
+      </ul>
+    </div>
+    <div class="flex-grow"></div>
+    <div class="mt-auto pt-6 border-t border-gray-600">
+      <ul>
+        <li class="hover:text-gray-300 cursor-pointer">⚙️ Settings</li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col w-full md:ml-64">
+
+    <!-- Top bar for mobile -->
+    <header class="md:hidden bg-white shadow p-4 flex justify-between items-center">
+      <button onclick="toggleSidebar()" class="text-gray-800 text-2xl focus:outline-none">☰</button>
+      <h1 class="text-xl font-semibold">Dashboard</h1>
+    </header>
+
+    <!-- Page content -->
+    <main class="flex-1 p-6 overflow-y-auto">
+
+      <!-- Add Task Modal -->
+      <div id="add_task_div" class="absolute inset-0 flex justify-center items-center z-20 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Add Task</h2>
+            <button id="close_add_task" onclick="toggleAddTaskModal()" class="text-gray-500 hover:text-red-600 text-xl font-bold">&times;</button>
+          </div>
+          <form class="flex flex-col gap-4">
+            <input type="text" id="task_name_input" placeholder="Task's name"
+              class="border w-full border-gray-300 p-2 rounded text-base font-normal" />
+            <input type="date" id="task_due_date_input"
+              class="border w-full border-gray-300 p-2 rounded text-base font-normal" />
+            <select id="task_status"
+              class="border w-full border-gray-300 p-2 rounded text-base font-normal">
+              <option value="in-progress" id="option2">In Progress</option>
+              <option value="overdue" id="option1">Overdue</option>
+              <option value="not-started" id="option3">Not Started</option>
+            </select>
+            <div id="task_error_div"
+              class="text-medium text-red-600 font-medium flex justify-center hidden">
+              <p id="task_error_p">you are</p>
+            </div>
+            <button id="add_task_btn" type="button"
+              class="mt-2 w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-base font-medium">
+              Add Task
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">My Tasks</h1>
+        <button id="add_task" onclick="toggleAddTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          + Add Task
+        </button>
+      </div>
+  <div class="flex flex-wrap  justify-center gap-4 mb-6">
+  <select id="status_filter" class="p-2 border rounded">
+    <option value="all-statuses">All Statuses</option>
+    <option value="not-started">Not Started</option>
+    <option value="in-progress">In Progress</option>
+    <option value="overdue">Overdue</option>
+
+  </select>
+
+  <select id="date_filter" class="p-2 border rounded">
+    <option value="">All Dates</option>
+    <option value="today">Today</option>
+    <option value="this-week">This Week</option>
+    <option value="overdue">Overdue</option>
+  </select>
+  <div class="">
+  <input type="text" id="search_input" placeholder="Search tasks..."
+         class="p-2 border rounded w-64" /></div>
+         <button type="button" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+    Find Tasks
+  </button>
+
+</div>
+      <div class="space-y-4" id="tasks_div">
+        <!-- Render tasks dynamically here -->
+      </div>
+
+    </main>
+  </div>
+</body>
