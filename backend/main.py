@@ -1,12 +1,14 @@
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, request, jsonify, redirect, render_template, session
+from flask import Flask, request, jsonify, make_response, redirect, render_template
 import pymongo
+import secrets
 from dotenv import load_dotenv
 import os
 from authlib.integrations.flask_client import OAuth
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
+from datetime import datetime, timedelta
 
 app = Flask(__name__, template_folder="../front-end/templates",
             static_folder="../front-end/static")
@@ -36,10 +38,41 @@ google = oauth.register(
 )
 
 
+def translateTime(str_date):
+
+    today = datetime.now()
+    start_date = None
+    end_date = None
+    str_date = str_date.strip().lower()
+    if str_date == "today":
+        start_date = datetime(today.year, today.month, today.day)
+        end_date = start_date+timedelta(days=1)
+    elif str_date == "this_week":
+        start_date = today-timedelta(days=today.weekday())
+        start_date = datetime(
+            start_date.year, start_date.month, start_date.day)
+        end_date = start_date + timedelta(days=7)
+    elif str_date == "next_week":
+        start_date = today - \
+            timedelta(days=today.weekday()) + timedelta(days=7)
+        end_date = start_date + timedelta(days=7)
+    elif str_date == "this_month":
+        start_date = datetime(today.year, today.month, 1)
+        if today.month == 12:
+            end_date = datetime(today.year+1, 1, 1)
+        else:
+            end_date = datetime(today.year, today.month+1, 1)
+    if str_date == "overdue":
+        start_date = None
+        end_date = today
+    return start_date, end_date
+
+
 @app.route("/")
 def homepage():
     # If user is not logged in, redirect to login page
-    if "user_email" not in session:
+    token = request.cookies.get("session_token")
+    if not token or not mycol.find_one({"sessions": token}):
         return redirect("/login")  # Redirect to login if not authenticated
     # If logged in, render the homepage
     return render_template("homepage.html", file="homepage.js")
@@ -63,16 +96,27 @@ def google_callback():
         email = idinfo["email"]
 
         # Check if account exists, if not, create it
+        key_hex = secrets.token_hex(32)
         if not mycol.find_one({"email": email}):
             mycol.insert_one({
                 "email": email,
                 "password": None,  # No password for Google accounts
-                "google": True
+                "google": True,
+                "sessions": [key_hex]
             })
+        else:
+            mycol.update_one(
+                {"email": email},
+                {"$addToSet": {"sessions": key_hex}}
+            )
 
-        session["user_email"] = email
-        # Return JSON for client-side handling
-        return jsonify({"status": "success", "message": "Google login successful"}), 200
+        resp = make_response(
+            jsonify({"status": "success", "message": "Google login successful"}),)
+
+        resp.set_cookie("session_token", key_hex, httponly=True,
+                        max_age=60*60*24*7*3)
+
+        return resp
     except Exception as e:
         print("Google token verify failed:", e)
         return "Invalid token", 400
@@ -81,7 +125,8 @@ def google_callback():
 @app.route("/create-account", methods=["GET", "POST"])
 def new_account():
     # If user is already logged in, redirect to homepage
-    if "user_email" in session:
+    token = request.cookies.get("session_token")
+    if token and mycol.find_one({"sessions": token}):
         return redirect("/")
 
     if request.method == "POST":
@@ -95,14 +140,19 @@ def new_account():
 
             # password hashing
             hashed_password = generate_password_hash(password)
-
+            resp = make_response(
+                jsonify({"status": "success", "message": "Account created"}), 201)
+            key_hex = secrets.token_hex(32)
+            resp.set_cookie("session_token", key_hex, httponly=True,
+                            max_age=60*60*24*7*3)
             mycol.insert_one({
                 "email": email,
                 "password": hashed_password,
-                "google": False  # Explicitly mark as non-Google account
+                "google": False,
+                "sessions": [key_hex]
             })
 
-            return jsonify({"status": "success", "message": "Account created"}), 201
+            return resp
         else:
             return jsonify({"status": "fail", "message": "Expected JSON"}), 415
 
@@ -112,42 +162,44 @@ def new_account():
 
 @app.route("/task", methods=["POST"])
 def add_task():
-
+    accounts_col = mydb["accounts"]
+    tasks_col = mydb["tasks"]
     if not request.is_json:
         # Unsupported Media Type
         return jsonify({"status": "fail", "message": "Expected JSON"}), 415
-    user_email = session.get("user_email")
-    if not user_email:
-        return jsonify({"status": "fail", "message": "Not logged in"}), 401
+    token = request.cookies.get("session_token")
+    if token and accounts_col.find_one({"sessions": token}):
 
-    data = request.get_json()
-    task_name = data.get("task_name")
-    task_date = data.get("task_date")
-    task_status = data.get("task_status")
+        data = request.get_json()
+        task_name = data.get("task_name")
+        task_date = data.get("task_date")
+        task_status = data.get("task_status")
 
-    # Validate input
-    if not task_name or not task_date or not task_status:
-        # Bad Request
-        return jsonify({"status": "fail", "message": "Missing required fields"}), 400
+        # Validate input
+        if not task_name or not task_date or not task_status:
+            # Bad Request
+            return jsonify({"status": "fail", "message": "Missing required fields"}), 400
 
-    try:
-        mycol = mydb["tasks"]
-        task = {"name": task_name, "date": task_date,
-                "status": task_status,    "user_email": user_email, }
+        try:
 
-        result = mycol.insert_one(task)
-        task["_id"] = str(result.inserted_id)  # ✅ include the MongoDB _id
+            task_date = datetime.fromisoformat(task_date)
+            user = accounts_col.find_one({"sessions": token})
+            task = {"name": task_name, "date": task_date,
+                    "status": task_status,    "user_email": user["email"], }
 
-        return jsonify({
-            "status": "success",
-            "message": "Task added successfully",
-            # no need for [task] (array) unless you're returning multiple
-            "task": task
-        }), 200
-    except Exception as e:
-        print("Database error:", e)
-        # Internal Server Error
-        return jsonify({"status": "fail", "message": "Server error"}), 500
+            result = tasks_col.insert_one(task)
+            task["_id"] = str(result.inserted_id)  # ✅ include the MongoDB _id
+
+            return jsonify({
+                "status": "success",
+                "message": "Task added successfully",
+                # no need for [task] (array) unless you're returning multiple
+                "task": task
+            }), 200
+        except Exception as e:
+            print("Database error:", e)
+            # Internal Server Error
+            return jsonify({"status": "fail", "message": "Server error"}), 500
     return jsonify({"status": "fail", "message": "Server error"}), 400
 
 
@@ -177,15 +229,20 @@ def get_tasks():
     if request.method == "GET":
         try:
             mycol = mydb["tasks"]
-            user_email = session.get("user_email")
-            if not user_email:
-                return jsonify({"status": "fail", "message": "Not logged in"}), 401
+            accounts_col = mydb["accounts"]
+            token = request.cookies.get("session_token")
+            user = accounts_col.find_one({"sessions": token})
 
-            tasks = list(mycol.find({"user_email": user_email}))
-            for task in tasks:
-                task["_id"] = str(task["_id"])
+            if token and user:
+                user_email = user["email"]
+                tasks = list(mycol.find({"user_email": user_email}))
 
-            return jsonify({"status": "success", "tasks": tasks}), 200
+                if not tasks:
+                    return jsonify({"status": "fail", "message": "no tasks found"}), 404
+                for task in tasks:
+                    task["_id"] = str(task["_id"])
+
+                return jsonify({"status": "success", "tasks": tasks}), 200
         except Exception as e:
             print("Database error:", e)
             return jsonify({"status": "fail", "message": "Server error"}), 500
@@ -223,21 +280,37 @@ def edit_task():
 
 @app.route("/getFilterdTask", methods=["POST"])
 def get_filterd_tasks():
-    # fully written by abood also edit task
+
     if not request.is_json:
         return jsonify({"status": "fail", "message": "Expected JSON"}), 415
     try:
         data = request.get_json()
-        task_name = data.get("task_searched_name", "")
-        task_date = data.get("task_searched_date", "")
-        task_status = data.get("task_searched_status", "")
+        task_name = data.get("task_searched_name", "").strip().lower()
+        task_date = data.get("task_searched_date", "").strip().lower()
+        task_status = data.get("task_searched_status", "").strip().lower()
         my_col = mydb["tasks"]
-        my_query = {"name": task_name,
-                    "status": task_status, "date": task_date}
-        tasks_found = my_col.find(my_query)
+        print("data", task_name, "baat", task_date, "cat", task_status)
+        start_date, end_date = translateTime(task_date)
+        my_query = {}
+
+        if task_name:
+            my_query["name"] = {"$regex": task_name, "$options": "i"}
+        if task_status:
+            my_query["status"] = task_status
+        if start_date and end_date:
+
+            my_query["date"] = {"$gte": start_date, "$lt": end_date}
+        elif not start_date and end_date:
+            my_query["date"] = {"$lt": end_date}
+            print("you guys ", start_date, end_date)
+        tasks_found = list(my_col.find(my_query).sort("date", 1))
+
+        print(tasks_found)
+        for t in tasks_found:
+            t["_id"] = str(t["_id"])
         if tasks_found:
-            return jsonify({"status": "success", "message": "tasks found"}), 200
-        return jsonify({"status": "success", "message": "no tasks found "}), 404
+            return jsonify({"status": "success", "message": "tasks found", "tasks": tasks_found}), 200
+        return jsonify({"status": "fail", "message": "no tasks found "}), 404
     except Exception as e:
         print("error ", e)
         return jsonify({"status": "fail", "message": "Server error"}), 500
@@ -245,8 +318,9 @@ def get_filterd_tasks():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # If user is already logged in, redirect to homepage
-    if "user_email" in session:
+    # If user already has a valid session cookie
+    token = request.cookies.get("session_token")
+    if token and mycol.find_one({"sessions": token}):
         return redirect("/")
 
     if request.method == "POST":
@@ -257,17 +331,48 @@ def login():
 
             account = mycol.find_one({"email": email})
 
-            # Check password for local accounts
+            # ✅ Check if the account exists and password is correct
             if account and account.get("password") and check_password_hash(account["password"], password):
-                session["user_email"] = email
-                return jsonify({"status": "success", "message": "Login successful"}), 200
-            # Handle Google accounts trying to log in with password (optional, but good for clarity)
+                # Generate new session token
+                key_hex = secrets.token_hex(32)
+
+                # Add token to user's sessions array
+                mycol.update_one(
+                    {"email": email},
+                    {"$addToSet": {"sessions": key_hex}}
+                )
+
+                # Set cookie
+                resp = make_response(jsonify({
+                    "status": "success",
+                    "message": "Login successful"
+                }))
+                resp.set_cookie(
+                    "session_token",
+                    key_hex,
+                    httponly=True,
+                    max_age=60*60*24*7*3,  # 3 weeks
+
+                )
+                return resp
+
             elif account and account.get("google"):
-                return jsonify({"status": "fail", "message": "Please use Google login for this account"}), 401
+                return jsonify({
+                    "status": "fail",
+                    "message": "Please use Google login for this account"
+                }), 401
+
             else:
-                return jsonify({"status": "fail", "message": "Invalid credentials"}), 401
+                return jsonify({
+                    "status": "fail",
+                    "message": "Invalid credentials"
+                }), 401
+
         else:
-            return jsonify({"status": "fail", "message": "Expected JSON"}), 415
+            return jsonify({
+                "status": "fail",
+                "message": "Expected JSON"
+            }), 415
 
     # Render the login page
     return render_template("login.html", file="login.js", google_client_id=GOOGLE_CLIENT_ID)

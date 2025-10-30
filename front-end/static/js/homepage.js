@@ -7,10 +7,17 @@ const $task_status_option = document.querySelector("#task_status");
 const $error_paragraph = document.querySelector("#task_error_p");
 const $error_div = document.querySelector("#task_error_div");
 const $tasks_div = document.querySelector("#tasks_div");
+const $notTasksFoundError = document.getElementById("error-no-tasks-found");
+const $filteredInputTasks = document.getElementById("search_input");
+const $FilterButton = document.getElementById("filiter_button");
+const $dateFilter = document.getElementById("date_filter");
+const $statusFilter = document.getElementById("status_filter");
+const pargraph_no_tasks = document.getElementById("pargraph_no_tasks");
 let isEditing = false;
 let editingTaskId = null;
 const date = new Date();
 date.setHours(0, 0, 0, 0);
+
 document.addEventListener("DOMContentLoaded", () => {
   const main = document.querySelector("main");
   const sidebar = document.getElementById("sidebar");
@@ -95,6 +102,7 @@ $add_new_task_btn.addEventListener("click", async () => {
 
     if (result.status !== "success")
       return showTaskError(result.message || "Failed to add task");
+    hideNoTasks();
 
     const task = result.task;
     $tasks_div.innerHTML += makeTasksHtml(task);
@@ -126,7 +134,7 @@ function makeTasksHtml(task) {
     statusColor = "bg-red-100 text-red-700";
   if (task.status.toLowerCase() === "not started")
     statusColor = "bg-cyan-100 text-green-700";
-  console.log(task, "task");
+
   task_date = new Date(task.date);
   if (task_date < date) {
     task.status = "overdue";
@@ -161,7 +169,7 @@ function makeTasksHtml(task) {
   `;
 }
 
-$tasks_div.addEventListener("click", (e) => {
+$tasks_div.addEventListener("click", async (e) => {
   if (e.target.id === "editBtn") {
     const taskCard = e.target.closest(".task-card");
 
@@ -178,9 +186,13 @@ $tasks_div.addEventListener("click", (e) => {
     const taskNameElement = taskCard?.querySelector("h3");
     if (taskCard && taskNameElement) {
       console.log("Deleting:", taskNameElement.textContent);
-      console.log(taskId);
-      delTask(taskId);
+
+      await delTask(taskId);
+
+      console.log("lsle");
       taskCard.remove();
+
+      showNoTasks();
     }
   }
 });
@@ -192,6 +204,14 @@ async function delTask(id) {
       task_id: id,
     }),
   });
+}
+function showNoTasks() {
+  $notTasksFoundError.classList.remove("hidden");
+  console.log("im just acat");
+}
+
+function hideNoTasks() {
+  $notTasksFoundError.classList.add("hidden");
 }
 function showTaskError(msg) {
   $error_paragraph.textContent = msg;
@@ -256,37 +276,61 @@ function showEditForm(taskCard) {
 window.onload = getTasks;
 function getTasks() {
   fetch("/gettask")
-    .then((res) => res.ok && res.json())
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("No data found");
+      }
+      return res.json();
+    })
     .then((data) => {
       $tasks_div.innerHTML = "";
       data.tasks.forEach((task) => {
         $tasks_div.innerHTML += makeTasksHtml(task);
       });
     })
-    .catch((e) => console.error("Error fetching tasks:", e));
-}
-function check(val1, val2, val3) {
-  let result = {};
-  if (val1) {
-    result["task_name"] = val1;
-    console.log(result);
-  }
-  //  if (val2) {
-  //   result[""]=
-  // }
-  if (val3 != "all-statuses") {
-    result["task_status"] = val3;
-  }
-}
-function get_filterd_tasks(name, date, status) {
-  if (check(name, date, status)) {
-    my_query = check(name, date, status);
-    fetch("/", {
-      method: "post",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        my_query,
-      }),
+    .catch((e) => {
+      console.error("Error fetching tasks:", e);
+      showNoTasks();
     });
-  }
 }
+
+function get_filterd_tasks(name, date, status) {
+  fetch("/getFilterdTask", {
+    method: "post",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      task_searched_date: date,
+      task_searched_name: name,
+      task_searched_status: status,
+    }),
+  })
+    .then((res) => {
+      console.log(res);
+      if (res.ok) {
+        return res.json();
+      }
+      throw new Error("No Data Found");
+    })
+    .then((data) => {
+      console.log(data);
+      $tasks_div.innerHTML = "";
+      data.tasks.forEach((task) => {
+        $tasks_div.innerHTML += makeTasksHtml(task);
+      });
+    })
+    .catch((err) => {
+      console.log(err, "error");
+      pargraph_no_tasks.textContent="No Tasks Found!"
+      showNoTasks();
+    });
+}
+$FilterButton.addEventListener("click", () => {
+  search = $filteredInputTasks.value;
+
+  let date = $dateFilter.value;
+  let st = $statusFilter.value;
+  if (search === "" && st === "" && date === "") {
+    return;
+  }
+  get_filterd_tasks(search, date, st);
+});
