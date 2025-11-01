@@ -328,7 +328,6 @@ function get_filterd_tasks(name, date, status) {
     .catch((err) => {
       clearFiliterBtn.classList.remove("hidden");
 
-      console.log(err, "error");
       $tasks_div.innerHTML = "";
       pargraph_no_tasks.textContent = "No Tasks Found!";
       showNoTasks();
@@ -340,7 +339,7 @@ clearFiliterBtn.addEventListener("click", () => {
   hideNoTasks();
 });
 $FilterButton.addEventListener("click", () => {
-  search = $filteredInputTasks.value;
+  let search = $filteredInputTasks.value;
 
   let date = $dateFilter.value;
   let st = $statusFilter.value;
