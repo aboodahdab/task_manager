@@ -169,7 +169,7 @@ function makeTasksHtml(task) {
   </div>
   `;
 }
-
+ 
 $tasks_div.addEventListener("click", async (e) => {
   if (e.target.id === "editBtn") {
     const taskCard = e.target.closest(".task-card");
@@ -190,10 +190,11 @@ $tasks_div.addEventListener("click", async (e) => {
 
       await delTask(taskId);
 
-      console.log("lsle");
       taskCard.remove();
-
-      showNoTasks();
+      if (!$tasks_div.contains(document.querySelector(".task-card"))) {
+        //  or just use $tasks_div.querySelectorAll(".task-card").length
+        showNoTasks();
+      }
     }
   }
 });
