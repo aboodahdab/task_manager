@@ -1,5 +1,5 @@
 /venv
 /.vscode
 /backend/venv
-/backend/*.env
-/backend/.env
+backend/*.env
+backend/.env

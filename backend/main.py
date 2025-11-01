@@ -47,16 +47,16 @@ def translateTime(str_date):
     if str_date == "today":
         start_date = datetime(today.year, today.month, today.day)
         end_date = start_date+timedelta(days=1)
-    elif str_date == "this_week":
+    if str_date == "this_week":
         start_date = today-timedelta(days=today.weekday())
         start_date = datetime(
             start_date.year, start_date.month, start_date.day)
         end_date = start_date + timedelta(days=7)
-    elif str_date == "next_week":
+    if str_date == "next_week":
         start_date = today - \
             timedelta(days=today.weekday()) + timedelta(days=7)
         end_date = start_date + timedelta(days=7)
-    elif str_date == "this_month":
+    if str_date == "this_month":
         start_date = datetime(today.year, today.month, 1)
         if today.month == 12:
             end_date = datetime(today.year+1, 1, 1)
@@ -284,6 +284,14 @@ def get_filterd_tasks():
     if not request.is_json:
         return jsonify({"status": "fail", "message": "Expected JSON"}), 415
     try:
+        token = request.cookies.get("session_token")
+        accounts_col = mydb["accounts"]
+        user = accounts_col.find_one({"sessions": token})
+        if not user:
+            return jsonify({"status": "fail", "message": "Unauthorized"}), 401
+        user_email = user["email"]
+        my_query = {"user_email": user_email}
+
         data = request.get_json()
         task_name = data.get("task_searched_name", "").strip().lower()
         task_date = data.get("task_searched_date", "").strip().lower()
@@ -291,7 +299,8 @@ def get_filterd_tasks():
         my_col = mydb["tasks"]
         print("data", task_name, "baat", task_date, "cat", task_status)
         start_date, end_date = translateTime(task_date)
-        my_query = {}
+        print("start:", start_date)
+        print("end:", end_date)
 
         if task_name:
             my_query["name"] = {"$regex": task_name, "$options": "i"}

@@ -125,7 +125,7 @@
         <button
           type="button"
           id="clear_button"
-          class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 hidden"
         >
           Clear
         </button>
@@ -139,9 +139,10 @@
         <select id="date_filter" class="p-2 border rounded">
           <option value="">All Dates</option>
           <option value="today">Today</option>
-          <option value="this-week">This Week</option>
+          <option value="this_week">This Week</option>
+          <option value="next_week">next Week</option>
+          <option value="this_month">this Month</option>
           <option value="overdue">Overdue</option>
-          <option value="this-month">this Month</option>
         </select>
         <div class="">
           <input
@@ -160,15 +161,17 @@
           Find Tasks
         </button>
       </div>
+      <div
+        id="error-no-tasks-found"
+        class="text-center text-[22px] md:text-[24px] lg:text-[26px] hidden"
+      >
+        <h1 class="text-red-800">No Tasks Found!</h1>
+        <p class="text-[18px] md:text-[20px]" id="pargraph_no_tasks">
+          You have no tasks yet!
+        </p>
+      </div>
       <div class="space-y-4" id="tasks_div">
         <!-- Render tasks dynamically here -->
-        <div
-          id="error-no-tasks-found"
-          class="text-center text-[22px] md:text-[24px] lg:text-[26px] hidden"
-        >
-          <h1 class="text-red-800">No Tasks Found!</h1>
-          <p class="text-[18px] md:text-[20px]" id="pargraph_no_tasks">You have no tasks yet!</p>
-        </div>
       </div>
     </main>
   </div>

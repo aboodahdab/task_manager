@@ -13,6 +13,7 @@ const $FilterButton = document.getElementById("filiter_button");
 const $dateFilter = document.getElementById("date_filter");
 const $statusFilter = document.getElementById("status_filter");
 const pargraph_no_tasks = document.getElementById("pargraph_no_tasks");
+const clearFiliterBtn = document.getElementById("clear_button");
 let isEditing = false;
 let editingTaskId = null;
 const date = new Date();
@@ -284,6 +285,8 @@ function getTasks() {
     })
     .then((data) => {
       $tasks_div.innerHTML = "";
+      clearFiliterBtn.classList.add("hidden");
+
       data.tasks.forEach((task) => {
         $tasks_div.innerHTML += makeTasksHtml(task);
       });
@@ -295,6 +298,8 @@ function getTasks() {
 }
 
 function get_filterd_tasks(name, date, status) {
+  $tasks_div.innerHTML = ""; // clear first
+
   fetch("/getFilterdTask", {
     method: "post",
     headers: { "Content-Type": "application/json" },
@@ -309,21 +314,31 @@ function get_filterd_tasks(name, date, status) {
       if (res.ok) {
         return res.json();
       }
+
       throw new Error("No Data Found");
     })
     .then((data) => {
       console.log(data);
-      $tasks_div.innerHTML = "";
+      hideNoTasks();
+      clearFiliterBtn.classList.remove("hidden");
       data.tasks.forEach((task) => {
         $tasks_div.innerHTML += makeTasksHtml(task);
       });
     })
     .catch((err) => {
+      clearFiliterBtn.classList.remove("hidden");
+
       console.log(err, "error");
-      pargraph_no_tasks.textContent="No Tasks Found!"
+      $tasks_div.innerHTML = "";
+      pargraph_no_tasks.textContent = "No Tasks Found!";
       showNoTasks();
     });
 }
+
+clearFiliterBtn.addEventListener("click", () => {
+  getTasks();
+  hideNoTasks();
+});
 $FilterButton.addEventListener("click", () => {
   search = $filteredInputTasks.value;
 
