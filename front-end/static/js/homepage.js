@@ -133,7 +133,7 @@ function makeTasksHtml(task) {
   let statusColor = "bg-yellow-100 text-yellow-700";
   if (task.status.toLowerCase() === "overdue")
     statusColor = "bg-red-100 text-red-700";
-  if (task.status.toLowerCase() === "not started")
+  if (task.status.toLowerCase() === "not-started")
     statusColor = "bg-cyan-100 text-green-700";
 
   task_date = new Date(task.date);

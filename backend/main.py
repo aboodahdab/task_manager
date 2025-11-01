@@ -260,6 +260,7 @@ def edit_task():
         task_new_name = data.get("task_name", "")
         task_new_status = data.get("task_status", "")
         task_new_date = data.get("task_date", "")
+        task_new_date = datetime.fromisoformat(task_new_date)
         my_query = {"_id": ObjectId(task_id)}  # <-- FIXED
         new_values = {"$set": {"name": task_new_name,
                                "date": task_new_date, "status": task_new_status}}
