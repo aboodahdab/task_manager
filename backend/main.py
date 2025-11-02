@@ -10,6 +10,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from datetime import datetime, timedelta
 
+
 app = Flask(__name__, template_folder="../front-end/templates",
             static_folder="../front-end/static")
 load_dotenv()
@@ -181,8 +182,8 @@ def add_task():
             return jsonify({"status": "fail", "message": "Missing required fields"}), 400
 
         try:
-
-            task_date = datetime.fromisoformat(task_date)
+            print(task_date)
+            task_date = datetime.strptime(task_date, "%Y-%m-%d")
             user = accounts_col.find_one({"sessions": token})
             task = {"name": task_name, "date": task_date,
                     "status": task_status,    "user_email": user["email"], }
@@ -235,6 +236,7 @@ def get_tasks():
 
             if token and user:
                 user_email = user["email"]
+
                 tasks = list(mycol.find({"user_email": user_email}))
 
                 if not tasks:
@@ -260,7 +262,7 @@ def edit_task():
         task_new_name = data.get("task_name", "")
         task_new_status = data.get("task_status", "")
         task_new_date = data.get("task_date", "")
-        task_new_date = datetime.fromisoformat(task_new_date)
+        task_new_date = datetime.strptime(task_new_date, "%Y-%m-%d")
         my_query = {"_id": ObjectId(task_id)}  # <-- FIXED
         new_values = {"$set": {"name": task_new_name,
                                "date": task_new_date, "status": task_new_status}}

@@ -60,7 +60,7 @@ $add_new_task_btn.addEventListener("click", async () => {
     return showTaskError("Please fill in all fields.");
   }
   if (name.length > 75) {
-    return showTaskError("Too long task name (maxmium 75 !");
+    return showTaskError("Too long task name (maxmium 75 ) !");
   }
   if (new Date(due) < date) {
     status = "overdue";
@@ -77,6 +77,7 @@ $add_new_task_btn.addEventListener("click", async () => {
     $add_new_task_btn.classList.add("bg-blue-600", "hover:bg-blue-700");
 
     toggleAddTaskModal();
+    console.log("al");
     showTaskError("Task updated successfully!");
     $error_paragraph.style.color = "green";
 
@@ -136,11 +137,12 @@ function makeTasksHtml(task) {
   if (task.status.toLowerCase() === "not-started")
     statusColor = "bg-cyan-100 text-green-700";
 
-  task_date = new Date(task.date);
+  task_date = new Date(task.date).toISOString().split("T")[0];
   if (task_date < date) {
     task.status = "overdue";
     statusColor = "bg-red-100 text-red-700";
   }
+
   return `
   <div class="task-card bg-white p-4 rounded-lg shadow flex justify-between items-center mb-4 relative group" data-id="${task._id}">
     <div class="flex items-center space-x-4">
@@ -149,7 +151,7 @@ function makeTasksHtml(task) {
 <h3 class="font-semibold text-gray-800 break-all max-w-xs">
   ${task.name}
 </h3>
-        <p class="text-sm text-gray-500">Due: ${task.date}</p>
+        <p class="text-sm text-gray-500">Due: ${task_date}</p>
       </div>
     </div>
 
@@ -169,7 +171,7 @@ function makeTasksHtml(task) {
   </div>
   `;
 }
- 
+
 $tasks_div.addEventListener("click", async (e) => {
   if (e.target.id === "editBtn") {
     const taskCard = e.target.closest(".task-card");
@@ -192,7 +194,7 @@ $tasks_div.addEventListener("click", async (e) => {
 
       taskCard.remove();
       if (!$tasks_div.contains(document.querySelector(".task-card"))) {
-        //  or just use $tasks_div.querySelectorAll(".task-card").length
+        //  or just use
         showNoTasks();
       }
     }
