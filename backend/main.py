@@ -237,7 +237,8 @@ def get_tasks():
             if token and user:
                 user_email = user["email"]
 
-                tasks = list(mycol.find({"user_email": user_email}))
+                tasks = list(mycol.find(
+                    {"user_email": user_email}).sort("date", 1))
 
                 if not tasks:
                     return jsonify({"status": "fail", "message": "no tasks found"}), 404

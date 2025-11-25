@@ -14,6 +14,8 @@ const $dateFilter = document.getElementById("date_filter");
 const $statusFilter = document.getElementById("status_filter");
 const pargraph_no_tasks = document.getElementById("pargraph_no_tasks");
 const clearFiliterBtn = document.getElementById("clear_button");
+const $overdueOption = document.querySelector("#option1");
+
 let isEditing = false;
 let editingTaskId = null;
 const date = new Date();
@@ -40,6 +42,12 @@ $task_date_input.addEventListener("change", () => {
   const not_statred = $task_status_option.querySelector("#option3");
   const in_progress = $task_status_option.querySelector("#option2");
 
+  if (new Date(input_date) < date) {
+    $overdueOption.disabled = false;
+  } else {
+    $overdueOption.disabled = true;
+  }
+
   if (input_date < date) {
     not_statred.disabled = true;
     in_progress.disabled = true;
@@ -50,6 +58,7 @@ $task_date_input.addEventListener("change", () => {
     in_progress.disabled = false;
   }
 });
+
 $add_new_task_btn.addEventListener("click", async () => {
   const name = $task_name_input.value.trim();
   const due = $task_date_input.value.trim();
@@ -62,6 +71,7 @@ $add_new_task_btn.addEventListener("click", async () => {
   if (name.length > 75) {
     return showTaskError("Too long task name (maxmium 75 ) !");
   }
+
   if (new Date(due) < date) {
     status = "overdue";
   }
@@ -77,7 +87,7 @@ $add_new_task_btn.addEventListener("click", async () => {
     $add_new_task_btn.classList.add("bg-blue-600", "hover:bg-blue-700");
 
     toggleAddTaskModal();
-    console.log("al");
+
     showTaskError("Task updated successfully!");
     $error_paragraph.style.color = "green";
 
@@ -110,12 +120,12 @@ $add_new_task_btn.addEventListener("click", async () => {
     $tasks_div.innerHTML += makeTasksHtml(task);
 
     $task_name_input.value = "";
-    $task_date_input.value = "";
     $task_status_option.value = "";
+    $task_date_input.value = "";
     $task_status_option
       .querySelectorAll("option")
       .forEach((opt) => (opt.disabled = false));
-
+    $overdueOption.disabled = true;
     showTaskError("Task added successfully!");
     $error_paragraph.style.color = "green";
 
@@ -130,6 +140,11 @@ $add_new_task_btn.addEventListener("click", async () => {
   }
 });
 
+function toggleDropdown(button) {
+  const dropdown = button.nextElementSibling;
+  dropdown.classList.toggle("hidden");
+}
+
 function makeTasksHtml(task) {
   let statusColor = "bg-yellow-100 text-yellow-700";
   if (task.status.toLowerCase() === "overdue")
@@ -137,7 +152,7 @@ function makeTasksHtml(task) {
   if (task.status.toLowerCase() === "not-started")
     statusColor = "bg-cyan-100 text-green-700";
 
-  task_date = new Date(task.date).toISOString().split("T")[0];
+  const task_date = new Date(task.date).toISOString().split("T")[0];
   if (task_date < date) {
     task.status = "overdue";
     statusColor = "bg-red-100 text-red-700";
@@ -236,6 +251,7 @@ function editTask(id, task_name, due, status) {
     }),
   });
 }
+
 function toggleAddTaskModal() {
   $add_tasks_div.classList.toggle("hidden");
 }
@@ -247,10 +263,6 @@ function check(v1, v2, v3) {
   return false;
 }
 
-function toggleDropdown(button) {
-  const dropdown = button.nextElementSibling;
-  dropdown.classList.toggle("hidden");
-}
 function showEditForm(taskCard) {
   const taskId = taskCard.dataset.id;
   const name = taskCard.querySelector("h3").textContent.trim();
@@ -289,10 +301,29 @@ function getTasks() {
     .then((data) => {
       $tasks_div.innerHTML = "";
       clearFiliterBtn.classList.add("hidden");
+      let html = "";
 
-      data.tasks.forEach((task) => {
-        $tasks_div.innerHTML += makeTasksHtml(task);
-      });
+      const sortedData = data.tasks.reduce(
+        (acc, task) => {
+          // make sure task.status exists
+          acc[task.status].push(task);
+          return acc;
+        },
+        {
+          overdue: [],
+          "not-started": [],
+          "in-progress": [],
+        }
+      );
+
+      for (const status in sortedData) {
+        console.log("Status:", status);
+
+        sortedData[status].forEach((task) => {
+          html += makeTasksHtml(task);
+        });
+      }
+      $tasks_div.innerHTML = html;
     })
     .catch((e) => {
       console.error("Error fetching tasks:", e);
