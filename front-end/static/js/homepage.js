@@ -15,10 +15,13 @@ const $statusFilter = document.getElementById("status_filter");
 const pargraph_no_tasks = document.getElementById("pargraph_no_tasks");
 const clearFiliterBtn = document.getElementById("clear_button");
 const $overdueOption = document.querySelector("#option1");
-
+const settingsBtn = document.querySelector("#settings-btn");
+const logOutBtn = document.getElementById("log-out-btn");
+const userEmailPDropDown = document.getElementById("user-email");
 let isEditing = false;
 let editingTaskId = null;
 const date = new Date();
+const user_info = {};
 date.setHours(0, 0, 0, 0);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -46,9 +49,10 @@ $task_date_input.addEventListener("change", () => {
     $overdueOption.disabled = false;
   } else {
     $overdueOption.disabled = true;
+    $task_status_option.value = "not-started";
   }
 
-  if (input_date < date) {
+  if (new Date(input_date) < date) {
     not_statred.disabled = true;
     in_progress.disabled = true;
     $task_status_option.value = "overdue";
@@ -291,6 +295,7 @@ function showEditForm(taskCard) {
 
 window.onload = getTasks;
 function getTasks() {
+  clearFiliterBtn.classList.add("hidden");
   fetch("/gettask")
     .then((res) => {
       if (!res.ok) {
@@ -300,9 +305,11 @@ function getTasks() {
     })
     .then((data) => {
       $tasks_div.innerHTML = "";
-      clearFiliterBtn.classList.add("hidden");
-      let html = "";
 
+      let html = "";
+      user_email = data["user_email"];
+      console.log(data, user_email);
+      user_info["user_email"] = user_email;
       const sortedData = data.tasks.reduce(
         (acc, task) => {
           // make sure task.status exists
@@ -382,3 +389,34 @@ $FilterButton.addEventListener("click", () => {
   }
   get_filterd_tasks(search, date, st);
 });
+function logOut() {
+  fetch("/logout")
+    .then((res) => {
+      if (res.ok) {
+        return res.json();
+      }
+      window.location.href = "/login";
+    })
+    .then((data) => {
+      console.log(data, "hi");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+}
+logOutBtn.addEventListener("click", () => {
+  logOut();
+});
+let isUserEmailSet = false;
+function setUserEmailInDropDown(user_info) {
+  if (!isUserEmailSet) {
+    const userEmail = user_info["user_email"];
+    userEmailPDropDown.textContent = userEmail;
+    isUserEmailSet = true;
+  }
+}
+function toggleSettingsDropUp(element) {
+  setUserEmailInDropDown(user_info);
+  const ele2 = element.querySelector("#the-drop-up");
+  ele2.classList.toggle("hidden");
+}
