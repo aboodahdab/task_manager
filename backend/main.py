@@ -89,12 +89,14 @@ def google_callback():
         request.form.get("credential") or
         (request.json and request.json.get("credential"))
     )
+
     if not token:
         return "Missing credential", 400
     try:
         idinfo = id_token.verify_oauth2_token(
             token, grequests.Request(), GOOGLE_CLIENT_ID)
         email = idinfo["email"]
+        # print(idinfo["picture"],"heloollo") that is only if you want to get the user image
 
         # Check if account exists, if not, create it
         key_hex = secrets.token_hex(32)
@@ -245,7 +247,7 @@ def get_tasks():
                 for task in tasks:
                     task["_id"] = str(task["_id"])
 
-                return jsonify({"status": "success", "tasks": tasks}), 200
+                return jsonify({"status": "success", "tasks": tasks, "user_email": user_email}), 200
         except Exception as e:
             print("Database error:", e)
             return jsonify({"status": "fail", "message": "Server error"}), 500
@@ -267,7 +269,7 @@ def edit_task():
         my_query = {"_id": ObjectId(task_id)}  # <-- FIXED
         new_values = {"$set": {"name": task_new_name,
                                "date": task_new_date, "status": task_new_status}}
-        print(new_values, "kk")
+
         mycol = mydb["tasks"]
         if not task_id or len(task_id) != 24:
             return jsonify({"status": "fail", "message": "Invalid or missing task_id"}), 400
@@ -389,6 +391,29 @@ def login():
 
     # Render the login page
     return render_template("login.html", file="login.js", google_client_id=GOOGLE_CLIENT_ID)
+
+
+@app.route("/logout", methods=["GET"])
+def log_out():
+    token = request.cookies.get("session_token")
+    if token and mycol.find_one({"sessions": token}):
+        resp = make_response(jsonify({
+            "status": "success", "logged_in": False, "message": "logged out successfly"
+        }))
+        resp.delete_cookie('session_token')
+        accounts_col = mydb["accounts"]
+        # user=accounts_col.find_one({"sessions":token}) we could find the user account then remove the token but we could do it instantly with the following code:
+        accounts_col.update_one({"sessions": token},  # MongoDB finds the account
+                                {
+            "$pull": {
+                "sessions":  token
+            }
+        })
+        return resp, 200
+
+    return jsonify({
+        "status": "fail", "message": "not loged in"
+    }), 404
 
 
 if __name__ == "__main__":
