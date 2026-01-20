@@ -18,10 +18,13 @@ const $overdueOption = document.querySelector("#option1");
 const settingsBtn = document.querySelector("#settings-btn");
 const logOutBtn = document.getElementById("log-out-btn");
 const userEmailPDropDown = document.getElementById("user-email");
+const userImg = document.getElementById("user-img");
+const fileUploaderInput = document.getElementById("file-input");
+const usernameDropDown = document.getElementById("user-name-drop-up");
 let isEditing = false;
 let editingTaskId = null;
+let userInfo = {};
 const date = new Date();
-const user_info = {};
 date.setHours(0, 0, 0, 0);
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -69,7 +72,6 @@ $add_new_task_btn.addEventListener("click", async () => {
   let status = $task_status_option.value.trim();
 
   if (check(name, due, status) == false) {
-    console.log("welcome sti;");
     return showTaskError("Please fill in all fields.");
   }
   if (name.length > 75) {
@@ -230,7 +232,6 @@ async function delTask(id) {
 }
 function showNoTasks() {
   $notTasksFoundError.classList.remove("hidden");
-  console.log("im just acat");
 }
 
 function hideNoTasks() {
@@ -292,8 +293,12 @@ function showEditForm(taskCard) {
 
   $add_tasks_div.classList.remove("hidden");
 }
+// getting tasks and user info on window load
+window.onload = () => {
+  getTasks();
+  get_user_info();
+};
 
-window.onload = getTasks;
 function getTasks() {
   clearFiliterBtn.classList.add("hidden");
   fetch("/gettask")
@@ -307,9 +312,7 @@ function getTasks() {
       $tasks_div.innerHTML = "";
 
       let html = "";
-      user_email = data["user_email"];
-      console.log(data, user_email);
-      user_info["user_email"] = user_email;
+
       const sortedData = data.tasks.reduce(
         (acc, task) => {
           // make sure task.status exists
@@ -320,7 +323,7 @@ function getTasks() {
           overdue: [],
           "not-started": [],
           "in-progress": [],
-        }
+        },
       );
 
       for (const status in sortedData) {
@@ -337,7 +340,7 @@ function getTasks() {
       showNoTasks();
     });
 }
-
+// filtering tasks code
 function get_filterd_tasks(name, date, status) {
   $tasks_div.innerHTML = ""; // clear first
 
@@ -374,11 +377,6 @@ function get_filterd_tasks(name, date, status) {
       showNoTasks();
     });
 }
-
-clearFiliterBtn.addEventListener("click", () => {
-  getTasks();
-  hideNoTasks();
-});
 $FilterButton.addEventListener("click", () => {
   let search = $filteredInputTasks.value;
 
@@ -388,6 +386,11 @@ $FilterButton.addEventListener("click", () => {
     return;
   }
   get_filterd_tasks(search, date, st);
+});
+// clearing filter
+clearFiliterBtn.addEventListener("click", () => {
+  getTasks();
+  hideNoTasks();
 });
 function logOut() {
   fetch("/logout")
@@ -404,19 +407,84 @@ function logOut() {
       console.log(err);
     });
 }
+// log out code
 logOutBtn.addEventListener("click", () => {
   logOut();
 });
+// toggle drop up code
 let isUserEmailSet = false;
-function setUserEmailInDropDown(user_info) {
+function setUserEmailInDropDown() {
   if (!isUserEmailSet) {
-    const userEmail = user_info["user_email"];
-    userEmailPDropDown.textContent = userEmail;
+    userEmailPDropDown.textContent = userInfo["email"];
     isUserEmailSet = true;
   }
 }
 function toggleSettingsDropUp(element) {
-  setUserEmailInDropDown(user_info);
+  setUserEmailInDropDown();
   const ele2 = element.querySelector("#the-drop-up");
   ele2.classList.toggle("hidden");
+}
+
+fileUploaderInput.addEventListener("change", async () => {
+  const form_data = new FormData();
+  console.log("Files:", fileUploaderInput.files);
+
+  const uploadedFile = fileUploaderInput.files[0];
+
+  console.log(uploadedFile, uploadedFile.name, uploadedFile.type, form_data);
+
+  form_data.append("img", uploadedFile);
+  const response = await fetch("/upload", {
+    method: "POST",
+
+    body: form_data,
+  });
+  const jsonResponse = await response.json();
+  const filename = jsonResponse.filename;
+
+  getFileAfterUploaded(filename);
+});
+function getFileAfterUploaded(filename) {
+  console.log(filename);
+  fetch("/getFile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+
+    body: JSON.stringify({
+      filename: filename,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Download Failed");
+      }
+      return response.blob();
+    })
+    .then((blob) => {
+      const url = URL.createObjectURL(blob); // makes a url from the sent file
+
+      userImg.src = url;
+    })
+    .catch((e) => {
+      console.log("an error in dowload", e);
+    });
+}
+async function get_user_info() {
+  console.log("getting user info");
+  const response = await fetch("/user_info");
+  const jsonResponse = await response.json();
+  console.log(jsonResponse, "hello");
+  const username = jsonResponse.username;
+  const email = jsonResponse.email;
+  const profile_img = jsonResponse.profile_url;
+  userInfo["email"] = email;
+  userInfo["username"] = username;
+  userInfo["profile_img"] = profile_img;
+  console.log(userInfo["profile_img"]);
+  setDropDownInfo(userInfo["username"], userInfo["profile_img"]);
+}
+function setDropDownInfo(username, img_url) {
+  usernameDropDown.textContent = username;
+  console.log(img_url);
+  getFileAfterUploaded(img_url);
 }
