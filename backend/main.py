@@ -45,7 +45,7 @@ profile_images_path = Path(current_path/"profile_images")
 if not profile_images_path.exists():
     print("this folder dosen't exist ")
     profile_images_path.mkdir()
-"{downloaded_filename}.{content_extension}
+
 
 def translateTime(str_date):
 
