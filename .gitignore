@@ -3,3 +3,4 @@
 /backend/venv
 backend/*.env
 backend/.env
+backend/profile_images
