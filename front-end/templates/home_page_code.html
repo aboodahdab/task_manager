@@ -34,7 +34,7 @@
     <div class="pd-0 w-full flex">
       <!-- <li class="hover:text-gray-300 mt-4 cursor-pointer">Settings</li> -->
       <div
-        class="hover:bg-black cursor-pointer border-t border-gray-600 w-full pb-1 pt-2 relative"
+        class="hover:bg-gray-700/50 cursor-pointer border-t border-gray-600 w-full pb-2 pt-2 relative"
         id="settings-btn"
         onclick="toggleSettingsDropUp(this)"
       >
@@ -102,13 +102,26 @@
             Logout
           </button>
         </div>
-        <div class="pl-4 flex gap-2">
-          <img
-            src="https://secure.gravatar.com/avatar/a8e040142716a4b44d014d80fbcf99c635b1d8faabfe469b6954a8ef2f168595?s=80&d=retro&r=pg"
-            alt=""
-            class="h-[40px] w-[40px] rounded-full"
-          />
-          <div class="text-center pt-1 capitalize">name</div>
+        <div class="pl-4 flex gap-2 items-center">
+          <label for="">
+            <img
+              src="https://secure.gravatar.com/avatar/a8e040142716a4b44d014d80fbcf99c635b1d8faabfe469b6954a8ef2f168595?s=80&d=retro&r=pg"
+              alt=""
+              onclick="document.getElementById('file-input').click()"
+              class="h-[40px] w-[40px] rounded-full mt-1 cursor-pointer"
+              id="user-img"
+            />
+            <input
+              id="file-input"
+              type="file"
+              accept="image/*"
+              class="hidden"
+            />
+          </label>
+          <div>
+            <div class="pt-1 capitalize" id="user-name-drop-up"></div>
+            <div class="capitalize text-[12px] text-[#9c9a92]">free plan</div>
+          </div>
         </div>
       </div>
     </div>

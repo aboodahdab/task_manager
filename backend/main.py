@@ -1,15 +1,17 @@
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, request, jsonify, make_response, redirect, render_template
+from flask import Flask, request, jsonify, make_response, redirect, render_template, send_from_directory
 import pymongo
 import secrets
 from dotenv import load_dotenv
 import os
+import requests
 from authlib.integrations.flask_client import OAuth
 from google.oauth2 import id_token
 from google.auth.transport import requests as grequests
 from datetime import datetime, timedelta
-
+from pathlib import Path
+import uuid
 
 app = Flask(__name__, template_folder="../front-end/templates",
             static_folder="../front-end/static")
@@ -37,6 +39,14 @@ google = oauth.register(
     userinfo_endpoint='https://www.googleapis.com/oauth2/v2/userinfo',
     client_kwargs={'scope': 'openid email profile'},
 )
+# Path for downloading profile images Must be before downloading images
+current_path = Path.cwd()
+profile_images_path = Path(current_path/"profile_images")
+if not profile_images_path.exists():
+    print("this folder dosen't exist ")
+    profile_images_path.mkdir()
+default_img_name = "default-image.jpeg"
+default_img_url = str(profile_images_path/default_img_name)
 
 
 def translateTime(str_date):
@@ -93,16 +103,35 @@ def google_callback():
     if not token:
         return "Missing credential", 400
     try:
+
         idinfo = id_token.verify_oauth2_token(
             token, grequests.Request(), GOOGLE_CLIENT_ID)
+
         email = idinfo["email"]
-        # print(idinfo["picture"],"heloollo") that is only if you want to get the user image
+        user_name = idinfo["name"]
+        picture_url = idinfo["picture"]
 
         # Check if account exists, if not, create it
         key_hex = secrets.token_hex(32)
         if not mycol.find_one({"email": email}):
+            downloaded_file = requests.get(picture_url)
+            type_to_ext = {
+                'image/jpeg': 'jpg',
+                'image/png': 'png',
+                'image/gif': 'gif',
+                'image/webp': 'webp'
+            }
+            content_type = downloaded_file.headers.get('Content-Type')
+
+            content_extension = type_to_ext.get(content_type, 'jpg')
+            downloaded_filename = uuid.uuid4().hex
+
+            with open(profile_images_path/f"{downloaded_filename}.{content_extension}", "wb") as file:
+                file.write(downloaded_file.content)
             mycol.insert_one({
                 "email": email,
+                "username": user_name,
+                "profile_url": f"{downloaded_filename}.{content_extension}",
                 "password": None,  # No password for Google accounts
                 "google": True,
                 "sessions": [key_hex]
@@ -114,7 +143,7 @@ def google_callback():
             )
 
         resp = make_response(
-            jsonify({"status": "success", "message": "Google login successful"}),)
+            jsonify({"status": "success", "message": "Google login successful", }),)
 
         resp.set_cookie("session_token", key_hex, httponly=True,
                         max_age=60*60*24*7*3)
@@ -137,7 +166,7 @@ def new_account():
             data = request.get_json()
             email = data.get("email", "").strip().lower()
             password = data.get("password", "").strip()
-
+            username = data.get("username", "").strip()
             if mycol.find_one({"email": email}):
                 return jsonify({"status": "fail", "message": "Account already exists"}), 409
 
@@ -151,6 +180,8 @@ def new_account():
             mycol.insert_one({
                 "email": email,
                 "password": hashed_password,
+                "username": username,
+                "profile_url":default_img_url,
                 "google": False,
                 "sessions": [key_hex]
             })
@@ -247,7 +278,7 @@ def get_tasks():
                 for task in tasks:
                     task["_id"] = str(task["_id"])
 
-                return jsonify({"status": "success", "tasks": tasks, "user_email": user_email}), 200
+                return jsonify({"status": "success", "tasks": tasks, }), 200
         except Exception as e:
             print("Database error:", e)
             return jsonify({"status": "fail", "message": "Server error"}), 500
@@ -414,6 +445,78 @@ def log_out():
     return jsonify({
         "status": "fail", "message": "not loged in"
     }), 404
+
+
+@app.route("/upload", methods=["POST"])
+def file_upload():
+    token = request.cookies.get("session_token")
+    if not token:
+        return jsonify({"status": "fail", "message": "Not logged in"}), 401
+    if "img" not in request.files:
+        return jsonify({"status": "fail", "message": "Expected Form Data"}), 415
+    try:
+        file = request.files["img"]
+        print(file, file.filename)
+        if file.filename == '':
+            return jsonify({"status": "fail", "message": "no file selected"}), 400
+        extension = file.filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4().hex}.{extension}"
+        # edit database
+        mycol = mydb["accounts"]
+        user = mycol.find_one({"sessions": token})
+        print(user)
+
+        mycol.update_one({"_id": user["_id"]},    {"$set": {"profile_url": unique_filename}}
+                         )
+        # save file
+        file_path = profile_images_path/unique_filename
+        file.save(file_path)
+        print(type(file_path), file_path)
+
+        return jsonify({"status": "success", "message": "uploaded image successfly", "filename": unique_filename}), 200
+    except Exception as e:
+        print("error ", e)
+        return jsonify({"status": "fail", "message": "Server error"}), 500
+
+
+@app.route("/getFile", methods=["POST"])
+def send_uploaded_file():
+
+    token = request.cookies.get("session_token")
+    if not token:
+        return jsonify({"status": "fail", "message": "Not logged in"}), 401
+
+    if request.method == "POST":
+        try:
+            print("no no yes hi")
+            if request.is_json:
+                data = request.get_json()
+                print(data, "zat is data")
+                filename = data["filename"]
+
+                return send_from_directory(profile_images_path, filename), 200
+        except Exception as e:
+            print("error", e)
+            return jsonify({"status": "fail", "message": "Server error"}), 500
+
+
+@app.route("/user_info")
+def get_user_info():
+    token = request.cookies.get("session_token")
+    if not token:
+        return jsonify({"status": "fail", "message": "Not logged in"}), 401
+    try:
+        user = mycol.find_one({"sessions": token})
+
+        username = user["username"]
+        user_profile_img = user["profile_url"]
+        user_email = user["email"]
+
+        return jsonify({"status": "success", "message": "got user info successfly", "username": username, "profile_url": user_profile_img, "email": user_email}), 200
+
+    except Exception as e:
+        print("error ", e)
+        return jsonify({"status": "fail", "message": "Server error"}), 500
 
 
 if __name__ == "__main__":
