@@ -45,6 +45,8 @@ profile_images_path = Path(current_path/"profile_images")
 if not profile_images_path.exists():
     print("this folder dosen't exist ")
     profile_images_path.mkdir()
+default_img_name = "default-image.jpeg"
+default_img_url = str(profile_images_path/default_img_name)
 
 
 def translateTime(str_date):
@@ -179,6 +181,7 @@ def new_account():
                 "email": email,
                 "password": hashed_password,
                 "username": username,
+                "profile_url":default_img_url,
                 "google": False,
                 "sessions": [key_hex]
             })
